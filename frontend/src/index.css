@@ -1,0 +1,14 @@
+@import "tailwindcss";
+
+/* Optional custom styles (minimal) */
+body {
+  background-color: #f0f0f0;
+}
+
+a {
+  text-decoration: none;
+}
+
+button:hover {
+  border-color: #646cff;
+}

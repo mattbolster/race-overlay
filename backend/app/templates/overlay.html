@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Live Race Overlay</title>
+  <style>
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #ddd; padding: 8px; }
+    th { background-color: #f2f2f2; }
+  </style>
+</head>
+<body>
+  <h2>Live Race Results</h2>
+  <table>
+    <tr><th>Pos</th><th>Number</th><th>Competitor</th><th>Laps</th><th>Last Lap</th><th>Diff</th><th>Gap</th><th>Best Lap</th></tr>
+    {% for row in data %}
+    <tr{% if row.is_fastest_lap %} style="background-color: #FFD700;"{% endif %}>
+      <td>{{ row.position }}</td>
+      <td>{{ row.display_number }}</td>
+      <td>{{ row.competitor }}</td>
+      <td>{{ row.laps }}</td>
+      <td>{{ row.last_lap }}</td>
+      <td>{{ row.difference }}</td>
+      <td>{{ row.gap }}</td>
+      <td>{{ row.best_lap }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</body>
+</html>
