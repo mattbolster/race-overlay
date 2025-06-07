@@ -6,7 +6,7 @@ socketio = SocketIO(
     cors_allowed_origins="*",
     ping_timeout=60,
     ping_interval=25,
-    async_mode="threading"  # ✅ Use supported mode
+    async_mode="gevent"  # ✅ Use supported mode
 )
 
 
