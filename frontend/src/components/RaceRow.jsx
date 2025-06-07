@@ -1,6 +1,5 @@
 import { motion } from 'framer-motion';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faFlagCheckered } from '@fortawesome/free-solid-svg-icons';
 import React from 'react';
 
 function RaceRow({
@@ -25,9 +24,6 @@ function RaceRow({
 
   const textColor = isFastestLapHolder ? 'text-purple-300' : 'text-white';
 
-  const showCheckeredFlag =
-    row.has_finished && (!row.lap_progress || row.lap_progress === 0);
-
   return (
     <motion.tr
       layout
@@ -37,12 +33,10 @@ function RaceRow({
       transition={{ duration: 0.5 }}
       className={`${baseHighlight} ${animateHighlight} transition-colors duration-500 ease-in-out`}
     >
-      {/* Icon (flag or position change) */}
+      {/* Icon (position up/down) */}
       {visibleColumns.includes('position') && (
         <td className={`px-1 text-center w-[30px] ${textColor}`}>
-          {showCheckeredFlag ? (
-            <FontAwesomeIcon icon={faFlagCheckered} className="text-white text-xl" />
-          ) : improvedPosition ? (
+          {improvedPosition ? (
             <span className="text-green-500 text-xl font-bold">▲</span>
           ) : droppedPosition ? (
             <span className="text-red-500 text-xl font-bold">▼</span>

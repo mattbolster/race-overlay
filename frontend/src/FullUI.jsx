@@ -162,19 +162,7 @@ function FullUI() {
         }, 0);
     }, [raceData]);
 
-    const updatedRaceData = useMemo(() => {
-        return raceData.map(row => {
-            const laps = parseInt(row.laps, 10);
-            const lapProgress = parseFloat(row.lap_progress);
-            return {
-                ...row,
-                has_finished:
-                    !isNaN(laps) &&
-                    laps >= totalLaps &&
-                    (!lapProgress || lapProgress === 0),
-            };
-        });
-    }, [raceData, totalLaps]);
+    const updatedRaceData = raceData;
 
 
     return (
