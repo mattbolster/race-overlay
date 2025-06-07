@@ -194,17 +194,18 @@ def stop_scraper():
 
         if scraper_task:
             try:
-                scraper_task.join(timeout=3)
+                scraper_task.join()  # Remove timeout arg
                 print("[SCRAPER] Greenlet finished cleanly.")
-            except eventlet.timeout.Timeout:
-                print("[SCRAPER] Timeout. Forcing kill.")
+            except Exception as e:
+                print(f"[SCRAPER] Join failed: {e}")
                 try:
                     scraper_task.kill()
                     print("[SCRAPER] Greenlet killed.")
-                except Exception as e:
-                    print(f"[SCRAPER] Kill failed: {e}")
+                except Exception as kill_err:
+                    print(f"[SCRAPER] Kill failed: {kill_err}")
             finally:
                 scraper_task = None
+
 
 
 def get_race_data():
