@@ -77,6 +77,35 @@ function FullUI() {
         return () => channel.close();
     }, []);
 
+    //Incase Overlay is opened when race is not live and needs initial load of historical data
+    useEffect(() => {
+        const channel = new BroadcastChannel('race_channel');
+
+        const handleMessage = (event) => {
+            if (event.data.type === 'overlay_ping' && raceData.length > 0) {
+                channel.postMessage({
+                    type: 'race_update',
+                    payload: {
+                        raceData,
+                        positionImproved,
+                        positionDropped,
+                        fastestLapHolderId,
+                        leaderId,
+                    },
+                });
+                console.log('[FullUI] Received overlay_ping → rebroadcasted race data');
+            }
+        };
+
+        channel.addEventListener('message', handleMessage);
+
+        return () => {
+            channel.removeEventListener('message', handleMessage);
+            channel.close();
+        };
+    }, [raceData, positionImproved, positionDropped, fastestLapHolderId, leaderId]);
+
+
 
     // ✅ Efficient race update broadcasting
     const lastBroadcast = useRef('');

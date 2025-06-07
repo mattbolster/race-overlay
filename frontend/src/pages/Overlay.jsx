@@ -39,24 +39,33 @@ function Overlay() {
         };
     }, []);
 
-    // Fallback fetch if no broadcast message arrives within 3 seconds
     useEffect(() => {
-        const timeout = setTimeout(() => {
-            if (!broadcastReceived) {
-                fetch('/api/data')
-                    .then(res => res.json())
-                    .then(json => {
-                        if (Array.isArray(json)) {
-                            setRaceData(json);
-                            console.log('[Overlay] Fallback fetch used ⏱️');
-                        }
-                    })
-                    .catch(console.error);
-            }
-        }, 3000);
+        const channel = new BroadcastChannel('race_channel');
 
-        return () => clearTimeout(timeout);
-    }, [broadcastReceived]);
+        // Send ping to FullUI requesting race data
+        channel.postMessage({ type: 'overlay_ping' });
+        console.log('[Overlay] Sent overlay_ping to FullUI');
+
+        const handleMessage = (event) => {
+            if (event.data.type === 'race_update') {
+                const payload = event.data.payload;
+                setRaceData(payload.raceData);
+                setPositionImproved(payload.positionImproved);
+                setPositionDropped(payload.positionDropped);
+                setFastestLapHolderId(payload.fastestLapHolderId);
+                setLeaderId(payload.leaderId);
+                setBroadcastReceived(true);
+                console.log('[Overlay] BroadcastChannel update received ✅');
+            }
+        };
+
+        channel.addEventListener('message', handleMessage);
+
+        return () => {
+            channel.removeEventListener('message', handleMessage);
+            channel.close();
+        };
+    }, []);
 
     const visibleKeys = useMemo(() => {
         return columnsParam
