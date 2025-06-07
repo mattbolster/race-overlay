@@ -176,10 +176,10 @@ def stop_scraper():
 
         if scraper_task:
             try:
-                scraper_task.wait()
-                print("[SCRAPER] Task finished.")
+                scraper_task.kill()  #Properly stop eventlet green thread
+                print("[SCRAPER] Greenlet killed.")
             except Exception as e:
-                print(f"[SCRAPER] Error stopping: {e}")
+                print(f"[SCRAPER] Kill failed: {e}")
             finally:
                 scraper_task = None
 
