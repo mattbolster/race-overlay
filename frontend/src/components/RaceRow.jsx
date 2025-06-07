@@ -10,7 +10,7 @@ function RaceRow({
   isFastestLapHolder,
   isLeader,
 }) {
-  const baseHighlight = isFastestLapHolder
+  const baseHighlight = row.is_fastest_lap
     ? 'bg-purple-500/30'
     : '';
 
@@ -20,7 +20,7 @@ function RaceRow({
     ? 'bg-red-400/30'
     : '';
 
-  const textColor = isFastestLapHolder ? 'text-purple-100' : 'text-white';
+  const textColor = row.is_fastest_lap ? 'text-purple-100' : 'text-white';
 
   return (
     <motion.tr
