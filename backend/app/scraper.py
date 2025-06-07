@@ -65,6 +65,7 @@ def scrape_loop(url):
 
             print("[SCRAPER] Scraping loop starting...")
             first_emit = True
+            unchanged_counter = 0
 
             while running:
                 time.sleep(1)
@@ -123,11 +124,17 @@ def scrape_loop(url):
                     if new_data != previous_data:
                         race_data[:] = copy.deepcopy(new_data)
                         previous_data = copy.deepcopy(new_data)
+                        unchanged_counter = 0
                         print(f"[SCRAPER] Emitting update with {len(new_data)} rows.")
                         if first_emit:
                             time.sleep(2)
                             first_emit = False
                         socketio.emit('race_update', race_data, namespace='/')
+                    else:
+                        unchanged_counter += 1
+                        if unchanged_counter % 10 == 0:
+                            print(f"[SCRAPER] Re-emitting unchanged data ({len(new_data)} rows).")
+                            socketio.emit('race_update', race_data, namespace='/')
 
                 except Exception as e:
                     print(f"[SCRAPER] Scrape error: {e}")
