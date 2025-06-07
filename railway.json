@@ -5,5 +5,8 @@
   },
   "deploy": {
     "startCommand": "python run.py"
+  },
+  "nixpacks": {
+    "language": "python"
   }
 }
