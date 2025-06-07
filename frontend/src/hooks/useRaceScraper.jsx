@@ -15,6 +15,7 @@ export function useRaceScraper() {
   const [leaderId, setLeaderId] = useState(null);
 
   const prevPositionsRef = useRef({});
+  const hasMounted = useRef(false);
 
   useEffect(() => {
     console.log('[WebSocket] Attempting to connect...');
@@ -48,19 +49,25 @@ export function useRaceScraper() {
         const pos = parseInt(row.position, 10);
         currentPositions[id] = pos;
 
-        const prevPos = prevPositionsRef.current[id];
-        if (prevPos !== undefined) {
-          if (pos < prevPos) improved[id] = true;
-          else if (pos > prevPos) dropped[id] = true;
+        if (hasMounted.current) {
+          const prevPos = prevPositionsRef.current[id];
+          if (prevPos !== undefined) {
+            if (pos < prevPos) improved[id] = true;
+            else if (pos > prevPos) dropped[id] = true;
+          }
         }
 
-        // Fastest lap logic
-        const lap = parseFloat(row.best_lap);
+        // Fastest lap logic with cleanup
+        const lap = parseFloat((row.best_lap || '').replace(/[^\d.]/g, ''));
         if (!isNaN(lap) && lap < fastestTime) {
           fastestTime = lap;
           fastestId = id;
         }
       });
+
+      if (!hasMounted.current) {
+        hasMounted.current = true;
+      }
 
       // Leader logic
       const leader = data.find(row => row.position === 1 || row.position === "1");
