@@ -29,7 +29,7 @@ function RaceRow({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 10 }}
       transition={{ duration: 0.5 }}
-      className={`${baseHighlight} ${animateHighlight} transition-colors duration-500 ease-in-out`}
+      className={`${/*baseHighlight*/''} ${animateHighlight} transition-colors duration-500 ease-in-out`}
     >
       {/* Icon (position up/down) */}
       {visibleColumns.includes('position') && (
