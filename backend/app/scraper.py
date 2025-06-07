@@ -179,4 +179,5 @@ def get_race_data():
     return race_data
 
 def get_scraper_status():
-    return {"scraper_running": thread_running}
+    return {"scraper_running": thread_running and current_browser is not None}
+
