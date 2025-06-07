@@ -12,19 +12,9 @@ function Overlay() {
     const [positionDropped, setPositionDropped] = useState({});
     const [fastestLapHolderId, setFastestLapHolderId] = useState(null);
     const [leaderId, setLeaderId] = useState(null);
+    const [broadcastReceived, setBroadcastReceived] = useState(false);
 
-    useEffect(() => {
-        fetch('/api/data')
-            .then(res => res.json())
-            .then(json => {
-                if (Array.isArray(json)) {
-                    setRaceData(json);
-                    console.log('[Overlay] Fallback data loaded.');
-                }
-            })
-            .catch(console.error);
-    }, []);
-
+    // Listen for race updates via BroadcastChannel
     useEffect(() => {
         const channel = new BroadcastChannel('race_channel');
         const handleMessage = (event) => {
@@ -35,6 +25,8 @@ function Overlay() {
                 setPositionDropped(payload.positionDropped);
                 setFastestLapHolderId(payload.fastestLapHolderId);
                 setLeaderId(payload.leaderId);
+                setBroadcastReceived(true);
+                console.log('[Overlay] BroadcastChannel update received ✅');
             }
         };
 
@@ -45,23 +37,48 @@ function Overlay() {
         };
     }, []);
 
+    // Fallback fetch if no broadcast message arrives within 3 seconds
+    useEffect(() => {
+        const timeout = setTimeout(() => {
+            if (!broadcastReceived) {
+                fetch('/api/data')
+                    .then(res => res.json())
+                    .then(json => {
+                        if (Array.isArray(json)) {
+                            setRaceData(json);
+                            console.log('[Overlay] Fallback fetch used ⏱️');
+                        }
+                    })
+                    .catch(console.error);
+            }
+        }, 3000);
+
+        return () => clearTimeout(timeout);
+    }, [broadcastReceived]);
+
     const visibleKeys = useMemo(() => {
         return columnsParam
-            ? columnsParam.split(',')  // ✅ ensures array of strings
+            ? columnsParam.split(',')
             : [];
     }, [columnsParam]);
 
     return (
         <div className="min-h-screen flex flex-col items-center justify-center p-4">
             <div className="w-auto rounded-lg shadow-2xl bg-black/70 backdrop-blur-sm">
-                <RaceTable
-                    raceData={raceData}
-                    positionImproved={positionImproved}
-                    positionDropped={positionDropped}
-                    fastestLapHolderId={fastestLapHolderId}
-                    leaderId={leaderId}
-                    visibleColumns={visibleKeys}
-                />
+                {raceData.length === 0 ? (
+                    <p className="text-white text-center text-sm px-4 py-6">
+                        Waiting for race data...
+                    </p>
+                ) : (
+                    <RaceTable
+                        raceData={raceData}
+                        positionImproved={positionImproved}
+                        positionDropped={positionDropped}
+                        fastestLapHolderId={fastestLapHolderId}
+                        leaderId={leaderId}
+                        visibleColumns={visibleKeys}
+                    />
+                )}
             </div>
         </div>
     );
