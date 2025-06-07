@@ -7,6 +7,8 @@ import { validateUrl } from './utils/raceUtils';
 import { useRaceScraper } from './hooks/useRaceScraper';
 import toast from 'react-hot-toast';
 import RaceTable from './components/RaceTable';
+import { getScraperStatus } from './utils/api';
+
 
 const OVERLAY_PATH = '/overlay';
 
@@ -83,8 +85,7 @@ function FullUI() {
     }, [raceData, positionImproved, positionDropped, fastestLapHolderId, leaderId]);
 
     useEffect(() => {
-        fetch('http://127.0.0.1:5000/api/status')
-            .then((res) => res.json())
+        getScraperStatus()
             .then((json) => {
                 if (json.scraper_running) {
                     setScraperStarted(true);

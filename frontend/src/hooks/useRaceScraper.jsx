@@ -1,8 +1,12 @@
-// useRaceScraper.jsx
 import { useEffect, useState } from 'react';
 import { io } from 'socket.io-client';
+import { getScraperStatus } from './utils/api';
 
-const socket = io('http://localhost:5000');
+
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+const socket = io(BASE_URL, {
+  transports: ['websocket'],
+});
 
 export function useRaceScraper() {
   const [raceData, setRaceData] = useState([]);
@@ -14,7 +18,7 @@ export function useRaceScraper() {
     socket.on('connect', () => {
       console.log('[WebSocket] Connected to backend ✅');
       setConnected(true);
-      socket.emit('client_ready'); // ✅ emit here safely
+      socket.emit('client_ready');
     });
 
     socket.on('disconnect', () => {
