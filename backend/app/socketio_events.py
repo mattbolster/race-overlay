@@ -1,7 +1,5 @@
-from flask_socketio import SocketIO
-from . import socketio  # ✅ GOOD — reuses the existing instance
+from . import socketio  # Reuse the existing instance
 
-# ✅ This MUST exist at the top level
 client_state = {
     "ready": False
 }

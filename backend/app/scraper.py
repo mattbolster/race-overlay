@@ -1,6 +1,6 @@
-from eventlet.semaphore import Semaphore as Lock
-import eventlet
+from threading import Thread, Lock
 from playwright.sync_api import sync_playwright
+import time
 import copy
 import re
 from . import socketio
@@ -10,7 +10,7 @@ race_data = []
 running = False
 thread_running = False
 current_browser = None
-scraper_task = None
+scraper_thread = None
 scraper_thread_lock = Lock()
 
 def scrape_loop(url):
@@ -27,16 +27,15 @@ def scrape_loop(url):
                 page.goto(url, wait_until="domcontentloaded", timeout=15000)
                 page.wait_for_selector('.datatable-row', timeout=15000)
                 print("[SCRAPER] Selector found.")
-            except Exception as page_err:
-                print(f"[SCRAPER] Page load/select error: {page_err}")
+            except Exception as e:
+                print(f"[SCRAPER] Page load error: {e}")
                 try:
                     page.screenshot(path="scraper_error.png")
-                    print("[SCRAPER] Screenshot saved to scraper_error.png")
+                    print("[SCRAPER] Screenshot saved.")
                 except:
-                    print("[SCRAPER] Failed to save screenshot")
+                    print("[SCRAPER] Screenshot failed.")
                 return
 
-            # Total laps
             total_laps = 0
             try:
                 header_elements = page.query_selector_all('div.header')
@@ -44,12 +43,11 @@ def scrape_loop(url):
                     if header.inner_text().strip().lower() == 'laps':
                         value_div = header.evaluate_handle('node => node.nextElementSibling')
                         if value_div:
-                            total_laps_text = value_div.inner_text().strip()
-                            total_laps = int(total_laps_text)
+                            total_laps = int(value_div.inner_text().strip())
                             print(f"[SCRAPER] Parsed total laps: {total_laps}")
                             break
             except Exception as e:
-                print(f"[SCRAPER] Failed to parse laps: {e}")
+                print(f"[SCRAPER] Lap parse error: {e}")
 
             thread_running = True
             running = True
@@ -60,16 +58,16 @@ def scrape_loop(url):
                 if client_state.get('ready'):
                     print("[SCRAPER] Client is ready ✅")
                     break
-                eventlet.sleep(0.1)
+                time.sleep(0.1)
                 waited += 0.1
             else:
-                print("[SCRAPER] Client not ready — proceeding anyway")
+                print("[SCRAPER] Client not ready — continuing anyway")
 
             print("[SCRAPER] Scraping loop starting...")
             first_emit = True
 
             while running:
-                eventlet.sleep(1)
+                time.sleep(1)
                 if not running:
                     break
 
@@ -88,8 +86,8 @@ def scrape_loop(url):
 
                         def get_text(selector):
                             try:
-                                e = row.query_selector(selector)
-                                return e.inner_text().strip() if e else ''
+                                el = row.query_selector(selector)
+                                return el.inner_text().strip() if el else ''
                             except:
                                 return ''
 
@@ -127,45 +125,40 @@ def scrape_loop(url):
                         previous_data = copy.deepcopy(new_data)
                         print(f"[SCRAPER] Emitting update with {len(new_data)} rows.")
                         if first_emit:
-                            eventlet.sleep(2)
+                            time.sleep(2)
                             first_emit = False
                         socketio.emit('race_update', race_data, namespace='/')
 
                 except Exception as e:
-                    print(f"[SCRAPER] Scraping error: {e}")
-                    eventlet.sleep(2)
-
-    except Exception as outer:
-        print(f"[SCRAPER] Outer failure: {outer}")
+                    print(f"[SCRAPER] Scrape error: {e}")
+                    time.sleep(2)
 
     finally:
-        try:
-            if current_browser:
-                print("[SCRAPER] Closing browser.")
+        if current_browser:
+            try:
                 current_browser.close()
-        except Exception as close_err:
-            print(f"[SCRAPER] Browser close error: {close_err}")
-        finally:
-            current_browser = None
-            thread_running = False
-            running = False
-            print("[SCRAPER] Scraper thread exited.")
+            except:
+                pass
+        current_browser = None
+        thread_running = False
+        running = False
+        print("[SCRAPER] Scraper thread exited.")
 
 def start_scraper(url):
-    global scraper_task, race_data, running, thread_running
+    global scraper_thread, race_data, running, thread_running
     with scraper_thread_lock:
         if thread_running:
-            print("[SCRAPER] Stopping existing scraper.")
             stop_scraper()
 
         race_data = []
         running = True
         thread_running = False
-        scraper_task = socketio.start_background_task(scrape_loop, url)
-        print("[SCRAPER] Scraper task started.")
+        scraper_thread = Thread(target=scrape_loop, args=(url,))
+        scraper_thread.start()
+        print("[SCRAPER] Scraper thread started.")
 
 def stop_scraper():
-    global running, scraper_task
+    global running, scraper_thread
     with scraper_thread_lock:
         if not running:
             print("[SCRAPER] Already stopped.")
@@ -173,15 +166,7 @@ def stop_scraper():
 
         running = False
         print("[SCRAPER] Stop requested.")
-
-        if scraper_task:
-            try:
-                scraper_task.kill()  #Properly stop eventlet green thread
-                print("[SCRAPER] Greenlet killed.")
-            except Exception as e:
-                print(f"[SCRAPER] Kill failed: {e}")
-            finally:
-                scraper_task = None
+        scraper_thread = None
 
 def get_race_data():
     return race_data
