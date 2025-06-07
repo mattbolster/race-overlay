@@ -30,8 +30,8 @@ function RaceTable({
           {visibleKeys.includes('competitor') && <th className="px-2 py-1 text-left w-[100px]">COMPETITOR</th>}
           {visibleKeys.includes('laps') && <th className="px-1 py-1 text-center w-[20px]">LAPS</th>}
           {visibleKeys.includes('last_lap') && <th className="px-1 py-1 text-center w-[20px]">LAST LAP</th>}
-          {visibleKeys.includes('difference') && <th className="px-1 py-1 text-center w-[20px]">DIFF</th>}
-          {visibleKeys.includes('gap') && <th className="px-1 py-1 text-center w-[20px]">GAP</th>}
+          {visibleKeys.includes('difference') && <th className="px-1 py-1 text-center w-[30px]">DIFF</th>}
+          {visibleKeys.includes('gap') && <th className="px-1 py-1 text-center w-[30px]">GAP</th>}
           {visibleKeys.includes('best_lap') && <th className="px-1 py-1 text-center w-[10px]">BEST LAP</th>}
         </tr>
       </thead>
