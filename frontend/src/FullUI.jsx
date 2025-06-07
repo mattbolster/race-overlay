@@ -165,12 +165,17 @@ function FullUI() {
     const updatedRaceData = useMemo(() => {
         return raceData.map(row => {
             const laps = parseInt(row.laps, 10);
+            const lapProgress = parseFloat(row.lap_progress);
             return {
                 ...row,
-                has_finished: !isNaN(laps) && laps >= totalLaps,
+                has_finished:
+                    !isNaN(laps) &&
+                    laps >= totalLaps &&
+                    (!lapProgress || lapProgress === 0),
             };
         });
     }, [raceData, totalLaps]);
+
 
     return (
         <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-6">
