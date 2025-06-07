@@ -6,8 +6,9 @@ socketio = SocketIO(
     cors_allowed_origins="*",
     ping_timeout=60,
     ping_interval=25,
-    async_mode="asgi"
+    async_mode="threading"  # ✅ Use supported mode
 )
+
 
 def create_app():
     app = Flask(__name__)
