@@ -10,9 +10,9 @@ function RaceRow({
   isFastestLapHolder,
   isLeader,
 }) {
-  //const baseHighlight = isFastestLapHolder
-  //  ? 'bg-purple-500/30'
-  //  : '';
+  const baseHighlight = isFastestLapHolder
+    ? 'bg-purple-500/30'
+    : '';
 
   const animateHighlight = improvedPosition
     ? 'bg-green-400/30'
@@ -20,7 +20,7 @@ function RaceRow({
     ? 'bg-red-400/30'
     : '';
 
-  const textColor = isFastestLapHolder ? 'text-purple-500' : 'text-white';
+  const textColor = isFastestLapHolder ? 'text-purple-100' : 'text-white';
 
   return (
     <motion.tr
@@ -29,7 +29,7 @@ function RaceRow({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 10 }}
       transition={{ duration: 0.5 }}
-      className={`${/*baseHighlight*/''} ${animateHighlight} transition-colors duration-500 ease-in-out`}
+      className={`${baseHighlight} ${animateHighlight} transition-colors duration-500 ease-in-out`}
     >
       {/* Icon (position up/down) */}
       {visibleColumns.includes('position') && (
