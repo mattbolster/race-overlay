@@ -10,15 +10,11 @@ race_data = []
 running = False
 thread_running = False
 current_browser = None
-scraper_thread = None
+scraper_task = None
 scraper_thread_lock = Lock()
-scraper_task = None  # Add this global
-
 
 def scrape_loop(url):
     global race_data, running, thread_running, current_browser
-
-    local_success_event = eventlet.event.Event()
 
     try:
         with sync_playwright() as p:
@@ -27,16 +23,18 @@ def scrape_loop(url):
             page = browser.new_page()
 
             try:
+                print(f"[SCRAPER] Navigating to URL: {url}")
                 page.goto(url, wait_until="domcontentloaded", timeout=15000)
+                print("[SCRAPER] Waiting for selector '.datatable-row'...")
                 page.wait_for_selector('.datatable-row', timeout=15000)
-                print("[SCRAPER] Selector found. Setting success event.")
-                local_success_event.send()
+                print("[SCRAPER] Selector found.")
             except Exception as page_err:
                 print(f"[SCRAPER] Failed to load or select data: {page_err}")
                 try:
                     page.screenshot(path="scraper_error.png")
-                except:
-                    pass
+                    print("[SCRAPER] Saved screenshot to scraper_error.png")
+                except Exception as ss_err:
+                    print(f"[SCRAPER] Screenshot failed: {ss_err}")
                 thread_running = False
                 running = False
                 return
@@ -55,7 +53,7 @@ def scrape_loop(url):
                             break
             except Exception as lap_err:
                 print(f"[SCRAPER] Failed to scrape total laps: {lap_err}")
-                total_laps = 0  # fallback
+                total_laps = 0
 
             thread_running = True
             running = True
@@ -66,10 +64,12 @@ def scrape_loop(url):
             print("[SCRAPER] Waiting up to 10s for client to be ready...")
             while waited < max_wait:
                 if client_state.get('ready'):
+                    print("[SCRAPER] Client marked ready ✅")
                     break
                 eventlet.sleep(0.1)
                 waited += 0.1
-                print(f"[SCRAPER] Still waiting... {waited:.1f}s")
+                if int(waited * 10) % 10 == 0:
+                    print(f"[SCRAPER] Still waiting... {waited:.1f}s")
 
             if not client_state.get('ready'):
                 print("[SCRAPER] Client not marked ready — continuing anyway.")
@@ -78,7 +78,7 @@ def scrape_loop(url):
             first_emit = True
 
             while running:
-                eventlet.sleep(1)  # Give up control for 1s so stop flag can take effect
+                eventlet.sleep(1)
                 if not running:
                     break
                 try:
@@ -143,6 +143,7 @@ def scrape_loop(url):
 
                         try:
                             socketio.emit('race_update', race_data, namespace='/')
+                            print("[SCRAPER] Emit successful.")
                         except Exception as e:
                             print("[SCRAPER] Emit failed:", e)
 
@@ -168,46 +169,42 @@ def scrape_loop(url):
 
 
 def start_scraper(url):
-    global thread_running, running, race_data, scraper_thread, scraper_task
+    global thread_running, running, race_data, scraper_task
     with scraper_thread_lock:
         race_data = []
-
         if thread_running:
             print("[SCRAPER] Existing scraper running. Stopping it.")
             stop_scraper()
 
-        scraper_thread = None
         running = True
         thread_running = False
         scraper_task = socketio.start_background_task(scrape_loop, url)
-
-    print("[SCRAPER] Scraper background task started.")
-    return True
+        print("[SCRAPER] Scraper background task started.")
 
 
 def stop_scraper():
     global scraper_task, running
-    if not running:
-        print("[SCRAPER] Already stopped.")
-        return
+    with scraper_thread_lock:
+        if not running:
+            print("[SCRAPER] Already stopped.")
+            return
 
-    running = False
-    print("[SCRAPER] Stop flag set. Waiting for greenlet to exit...")
+        running = False
+        print("[SCRAPER] Stop flag set. Waiting for greenlet to exit...")
 
-    if scraper_task:
-        try:
-            scraper_task.wait(timeout=3)
-            print("[SCRAPER] Greenlet finished cleanly.")
-        except eventlet.timeout.Timeout:
-            print("[SCRAPER] Timeout. Forcing kill.")
+        if scraper_task:
             try:
-                scraper_task.kill()
-                print("[SCRAPER] Greenlet killed.")
-            except Exception as e:
-                print(f"[SCRAPER] Kill failed: {e}")
-        finally:
-            scraper_task = None
-
+                scraper_task.join(timeout=3)
+                print("[SCRAPER] Greenlet finished cleanly.")
+            except eventlet.timeout.Timeout:
+                print("[SCRAPER] Timeout. Forcing kill.")
+                try:
+                    scraper_task.kill()
+                    print("[SCRAPER] Greenlet killed.")
+                except Exception as e:
+                    print(f"[SCRAPER] Kill failed: {e}")
+            finally:
+                scraper_task = None
 
 
 def get_race_data():
