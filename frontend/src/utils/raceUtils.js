@@ -1,11 +1,15 @@
-export const validateUrl = (url) => {
+export function validateUrl(url) {
   try {
-    new URL(url);
-    return true;
-  } catch (_) {
+    const parsed = new URL(url);
+    return (
+      parsed.hostname === 'speedhive.mylaps.com' &&
+      parsed.pathname.includes('/livetiming/')
+    );
+  } catch {
     return false;
   }
-};
+}
+
 
 export const getFastestLapAndLeader = (data) => {
   let bestLap = Infinity;
@@ -13,7 +17,7 @@ export const getFastestLapAndLeader = (data) => {
   let leaderId = null;
 
   data.forEach((row) => {
-    const key = `${row.display_number}-${row.competitor}`;
+    const key = row.display_number;
     if (!isNaN(row.best_lap) && Number(row.best_lap) < bestLap) {
       bestLap = Number(row.best_lap);
       fastestId = key;
@@ -24,12 +28,13 @@ export const getFastestLapAndLeader = (data) => {
   return { fastestId, leaderId };
 };
 
+
 export const getPositionChanges = (data, prev) => {
   const improved = {};
   const dropped = {};
 
   data.forEach((row) => {
-    const key = `${row.display_number}-${row.competitor}`;
+    const key = row.display_number;
     const prevPos = prev[key];
 
     if (prevPos !== undefined) {
@@ -42,5 +47,6 @@ export const getPositionChanges = (data, prev) => {
 
   return { improved, dropped };
 };
+
 
 export const isRaceDataEqual = (a, b) => JSON.stringify(a) === JSON.stringify(b);

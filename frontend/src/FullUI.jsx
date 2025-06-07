@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { NotificationDialogue } from './components/NotificationDialogue';
 import { CustomSpinner } from './components/Spinner';
 import ColumnVisibilityDropdown from './components/ColumnVisibilityDropdown';
@@ -15,8 +15,9 @@ function FullUI() {
     const [scraperStarted, setScraperStarted] = useState(false);
     const [modalOpen, setModalOpen] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [hasRaceData, setHasRaceData] = useState(false);
 
-    const [columns, setColumns] = useState([
+    const [columns, setColumns] = useState(() => ([
         { key: 'position', label: 'Position', visible: true },
         { key: 'display_number', label: '#', visible: true },
         { key: 'competitor', label: 'Competitor', visible: true },
@@ -25,7 +26,7 @@ function FullUI() {
         { key: 'difference', label: 'Difference', visible: true },
         { key: 'gap', label: 'Gap', visible: true },
         { key: 'best_lap', label: 'Best Lap', visible: true },
-    ]);
+    ]));
 
     const visibleKeys = useMemo(
         () => columns.filter(col => col.visible).map(col => col.key),
@@ -41,76 +42,96 @@ function FullUI() {
     };
 
     const {
-        raceData,
-        positionImproved,
-        positionDropped,
+        raceData = [],
+        positionImproved = {},
+        positionDropped = {},
         fastestLapHolderId,
         leaderId,
     } = useRaceScraper(scraperStarted);
 
+    useEffect(() => {
+        if (Array.isArray(raceData) && raceData.length > 0) {
+            setHasRaceData(true);
+            setLoading(false);
+        }
+    }, [raceData]);
+
+    // ✅ Efficient race update broadcasting
+    const lastBroadcast = useRef('');
+    useEffect(() => {
+        if (!raceData.length) return;
+
+        const channel = new BroadcastChannel('race_channel');
+        const currentData = JSON.stringify(raceData);
+
+        if (currentData !== lastBroadcast.current) {
+            lastBroadcast.current = currentData;
+
+            channel.postMessage({
+                type: 'race_update',
+                payload: {
+                    raceData,
+                    positionImproved,
+                    positionDropped,
+                    fastestLapHolderId,
+                    leaderId,
+                },
+            });
+        }
+
+        return () => channel.close();
+    }, [raceData, positionImproved, positionDropped, fastestLapHolderId, leaderId]);
 
     useEffect(() => {
         fetch('http://127.0.0.1:5000/api/status')
             .then((res) => res.json())
             .then((json) => {
                 if (json.scraper_running) {
-                    console.log('[FullUI] Scraper already running, setting scraperStarted = true');
                     setScraperStarted(true);
                 }
             })
-            .catch((err) => console.error('[FullUI] Failed to check scraper status', err));
+            .catch((err) => console.error('[FullUI] Status check failed', err));
     }, []);
 
-
-
+    // ✅ Unified cleanup for unmount + refresh
     useEffect(() => {
-        const handleBeforeUnload = async () => {
+        const cleanup = async () => {
             if (scraperStarted) await stopScraper();
         };
-
-        window.addEventListener("beforeunload", handleBeforeUnload);
+        window.addEventListener("beforeunload", cleanup);
         return () => {
-            window.removeEventListener("beforeunload", handleBeforeUnload);
+            window.removeEventListener("beforeunload", cleanup);
+            cleanup();
         };
     }, [scraperStarted]);
 
     const startScraperHandler = async () => {
         if (!validateUrl(raceUrl)) {
-            toast.error('Please enter a valid URL.');
+            toast.error('Please enter a valid Speedhive live timing URL.');
             return;
         }
 
+        setHasRaceData(false);
         setLoading(true);
-        try {
-            const res = await startScraper(raceUrl);
-            console.log('[FullUI] startScraper response:', res);
 
-            let json = {};
-            try {
-                json = await res.json();
-                console.log('[FullUI] Parsed JSON:', json);
-            } catch (err) {
-                console.warn('[FullUI] Failed to parse JSON from startScraper response.', err);
-            }
+        try {
+            await stopScraper();
+            const res = await startScraper(raceUrl);
+            const json = await res.json();
 
             if (res.ok) {
-                setScraperStarted(true);  // ✅ Ensure WebSocket starts
+                setScraperStarted(true);
                 setModalOpen(true);
                 toast.success('Scraper started!');
             } else {
                 toast.error(json?.error || 'Failed to start scraper.');
+                setLoading(false);
             }
         } catch (err) {
             console.error('[FullUI] Start error:', err);
             toast.error('Error starting scraper.');
-        } finally {
             setLoading(false);
         }
-    };
-
-    const openOverlayWithColumns = () => {
-        const params = new URLSearchParams({ columns: visibleKeys.join(',') });
-        window.open(`${OVERLAY_PATH}?${params.toString()}`, '_blank');
     };
 
     const stopScraperHandler = async () => {
@@ -128,7 +149,27 @@ function FullUI() {
         }
     };
 
-    console.log('[FullUI] raceData:', raceData);
+    const openOverlayWithColumns = () => {
+        const params = new URLSearchParams({ columns: visibleKeys.join(',') });
+        window.open(`${OVERLAY_PATH}?${params.toString()}`, '_blank');
+    };
+
+    const totalLaps = useMemo(() => {
+        return raceData.reduce((max, row) => {
+            const laps = parseInt(row.laps, 10);
+            return !isNaN(laps) && laps > max ? laps : max;
+        }, 0);
+    }, [raceData]);
+
+    const updatedRaceData = useMemo(() => {
+        return raceData.map(row => {
+            const laps = parseInt(row.laps, 10);
+            return {
+                ...row,
+                has_finished: !isNaN(laps) && laps >= totalLaps,
+            };
+        });
+    }, [raceData, totalLaps]);
 
     return (
         <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-6">
@@ -153,8 +194,8 @@ function FullUI() {
                     </button>
                 </div>
             ) : (
-                <div className="bg-white shadow p-6 rounded-lg space-y-4 w-full max-w-5xl background: ">
-                    {raceData.length === 0 ? (
+                <div className="bg-white shadow p-6 rounded-lg space-y-4 w-full max-w-5xl">
+                    {!hasRaceData ? (
                         <div className="flex items-center gap-3">
                             <p className="text-gray-700 font-medium">Waiting for race data...</p>
                             <CustomSpinner />
@@ -180,21 +221,18 @@ function FullUI() {
                             <ColumnVisibilityDropdown columns={columns} onToggle={handleToggleColumn} />
                             <div className="w-auto rounded-lg shadow-2xl bg-gradient-to-r from-black/30 via-gray-800/50 to-black/100 backdrop-blur-sm border border-gray-700">
                                 <RaceTable
-                                    raceData={raceData}
+                                    raceData={updatedRaceData}
                                     positionImproved={positionImproved}
                                     positionDropped={positionDropped}
                                     fastestLapHolderId={fastestLapHolderId}
                                     leaderId={leaderId}
-                                    visibleColumns={visibleColumns}
+                                    visibleColumns={visibleKeys}
                                 />
                             </div>
-
                         </>
                     )}
                 </div>
             )}
-
-            <NotificationDialogue open={modalOpen} onClose={() => setModalOpen(false)} />
         </div>
     );
 }

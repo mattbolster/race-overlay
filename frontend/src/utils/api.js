@@ -7,11 +7,19 @@ export const startScraper = async (raceUrl) => {
     body: JSON.stringify({ race_url: raceUrl }),
   });
 };
-export const stopScraper = () => {
-  return fetch('/api/stop', {
-    method: 'POST',
-  });
-};
+export async function stopScraper() {
+  try {
+    const res = await fetch('http://127.0.0.1:5000/api/stop', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    return res;
+  } catch (err) {
+    console.error('[API] Failed to stop scraper:', err);
+    return { ok: false };
+  }
+}
+
 
 export const fetchRaceData = () => {
   return fetch('/api/data');

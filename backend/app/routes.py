@@ -1,5 +1,11 @@
 from flask import Blueprint, request, jsonify
-from .scraper import start_scraper, stop_scraper, get_race_data, get_scraper_status
+from .scraper import (
+    start_scraper,
+    stop_scraper,
+    get_race_data,
+    get_scraper_status,
+    
+)
 from . import socketio
 
 scraper_bp = Blueprint('scraper', __name__)
@@ -10,6 +16,8 @@ def start():
         race_url = request.get_json().get('race_url')
         if not race_url:
             return jsonify({'error': 'No URL provided'}), 400
+
+        print("[/api/start] Received URL:", race_url)
 
         success = start_scraper(race_url)
         if not success:
