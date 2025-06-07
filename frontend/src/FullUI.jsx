@@ -58,6 +58,26 @@ function FullUI() {
         }
     }, [raceData]);
 
+    useEffect(() => {
+        if (!raceData.length) return;
+
+        const channel = new BroadcastChannel('race_channel');
+        channel.postMessage({
+            type: 'race_update',
+            payload: {
+                raceData,
+                positionImproved,
+                positionDropped,
+                fastestLapHolderId,
+                leaderId,
+            },
+        });
+        console.log('[FullUI] Forced broadcast on mount (Overlay compatibility)');
+
+        return () => channel.close();
+    }, []);
+
+
     // ✅ Efficient race update broadcasting
     const lastBroadcast = useRef('');
     useEffect(() => {

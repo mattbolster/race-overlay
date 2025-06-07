@@ -2,6 +2,8 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import RaceTable from '../components/RaceTable';
 
+
+
 function Overlay() {
     const location = useLocation();
     const query = new URLSearchParams(location.search);
